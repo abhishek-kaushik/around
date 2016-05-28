@@ -1,32 +1,45 @@
 <?php namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Http\Requests;
 use App\UserTweets;
 use DB;
 
+/**
+ * Class RankController
+ * @package App\Http\Controllers
+ */
 class RankController extends Controller
 {
-    protected $userTweets;
-
+    /**
+     * @var
+     */
     protected $request;
 
-    public function __construct(UserTweets $userTweets, Request $request)
+    /**
+     * RankController constructor.
+     * @param UserTweets $userTweets
+     */
+    public function __construct(UserTweets $userTweets)
     {
         $this->userTweets   = $userTweets;
-        $this->request      = $request;
     }
 
-    public function get()
+    /**
+     * @param $userId
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     */
+    public function get($userId)
     {
-        $users = DB::table('user_tweets')
+        $rank = DB::table('user_tweets')
             ->select(DB::raw('DAYNAME(tweet_at) as day, HOUR(tweet_at) as hour, favorite_count + retweet_count as sum'))
-            ->where('user_id', $this->request->get('user_id'))
+            ->where('user_id', $userId)
             ->groupBy(DB::raw('DAYNAME(tweet_at)'))
             ->groupBy(DB::raw('HOUR(tweet_at)'))
             ->orderBy(DB::raw('favorite_count + retweet_count'), 'desc')
             ->get();
 
-        dd($users);
+        return view('rank', [
+            'rank'  => $rank
+        ]);
     }
 }

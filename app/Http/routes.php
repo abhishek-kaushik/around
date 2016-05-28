@@ -6,7 +6,7 @@ Route::group(
         'prefix'    => '/'
     ],
     function () {
-        Route::get('home', [
+        Route::get('', [
             'as'    => 'home',
             'uses'  => 'TwitterController@home'
         ]);
@@ -26,12 +26,12 @@ Route::group(
             'uses'  => 'TwitterController@logout'
         ]);
 
-        Route::get('tweets', [
+        Route::get('tweets/{userId}', [
             'as'    => 'tweets',
             'uses'  => 'TwitterController@exportTweets'
         ]);
 
-        Route::get('rank', [
+        Route::get('rank/{userId}', [
             'as'    => 'rank',
             'uses'  => 'RankController@get'
         ]);

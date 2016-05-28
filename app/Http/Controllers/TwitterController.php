@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use App\Http\Requests;
+use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Session;
 use Thujohn\Twitter\Facades\Twitter;
 use App\TwitterUsers;
@@ -21,7 +22,7 @@ class TwitterController extends Controller
     /**
      * @var bool
      */
-    protected $forceLogin       = false;
+    protected $forceLogin   = false;
 
     /**
      * @var Request
@@ -53,7 +54,7 @@ class TwitterController extends Controller
     }
 
     /**
-     * @return mixed
+     * @return Redirect
      */
     public function login()
     {
@@ -95,7 +96,7 @@ class TwitterController extends Controller
             $token = Twitter::getAccessToken($oauthVerifier);
 
             if (!isset($token['oauth_token_secret'])) {
-                return redirect('login')
+                return Redirect::to('login')
                     ->with('flash_error', 'We could not log you in on Twitter.');
             }
 
@@ -104,13 +105,15 @@ class TwitterController extends Controller
             if (is_object($credentials) && !isset($credentials->error)) {
                 Session::put('access_token', $token);
 
-                return redirect('home')
+                return Redirect::to('/')
                     ->with('flash_notice', 'Congrats! You\'ve successfully signed in!');
             }
 
-            return redirect('error')
+            return Redirect::to('error')
                 ->with('flash_error', 'Crap! Something went wrong while signing you up!');
         }
+
+        return Redirect::to('/');
     }
 
     /**
@@ -119,7 +122,7 @@ class TwitterController extends Controller
     public function logout()
     {
         Session::forget('access_token');
-        return redirect('home')
+        return Redirect::to('/')
             ->with('flash_notice', 'You\'ve successfully logged out!');
     }
 
@@ -132,13 +135,21 @@ class TwitterController extends Controller
     }
 
     /**
-     *Store User Data
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function home()
     {
         $token    = $this->request->session()->get('access_token');
 
-        $users  = new TwitterUsers;
+        if (is_null($token)) {
+            return view('welcome');
+        }
+
+        $users    = TwitterUsers::where('user_id', $token['user_id'])->first();
+
+        if (is_null($users)) {
+            $users  = new TwitterUsers;
+        }
 
         $users->oauth_token         = $token['oauth_token'];
         $users->oauth_token_secret  = $token['oauth_token_secret'];
@@ -146,29 +157,37 @@ class TwitterController extends Controller
         $users->screen_name         = $token['screen_name'];
 
         $users->save();
+
+        $users    = TwitterUsers::get();
+
+        return view('home', [
+            'users' => $users
+        ]);
     }
 
     /**
-     *Export Last hundred tweets by user_id
+     * @param $userId
+     * @return mixed
      */
-    public function exportTweets()
+    public function exportTweets($userId)
     {
-        $screenName = TwitterUsers::where('user_id', $this->request->get('user_id'))->first();
+        $user = TwitterUsers::where('user_id', $userId)->first();
 
         $tweets = Twitter::getUserTimeline(
             [
-                'screen_name' => $screenName['screen_name'],
-                'count' => 100,
-                'format' => 'array'
+                'screen_name'   => $user->screen_name,
+                'count'         => 100,
+                'include_rts'   => false,
+                'format'        => 'array'
             ]
         );
 
         foreach ($tweets as $tweet) {
-            if ($tweet['retweeted']) {
-                continue;
-            }
+            $userTweet    = UserTweets::where('tweet_id', $tweet['id'])->first();
 
-            $userTweet   = new UserTweets;
+            if (is_null($userTweet)) {
+                $userTweet   = new UserTweets;
+            }
 
             $userTweet->user_id        = $tweet['user']['id'];
             $userTweet->tweet_id       = $tweet['id'];
@@ -178,5 +197,7 @@ class TwitterController extends Controller
 
             $userTweet->save();
         }
+
+        return Redirect::to('rank/' . $userId);
     }
 }
