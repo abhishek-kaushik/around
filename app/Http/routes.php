@@ -3,7 +3,7 @@
 Route::group(
     [
         'as'        => 'twitter::',
-        'prefix'    => 'twitter'
+        'prefix'    => '/'
     ],
     function () {
         Route::get('home', [

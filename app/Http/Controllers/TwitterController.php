@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use App\Http\Requests;
 use Illuminate\Support\Facades\Session;
 use Thujohn\Twitter\Facades\Twitter;
+use App\TwitterUsers;
 
 /**
  * Class TwitterController
@@ -83,7 +84,7 @@ class TwitterController extends Controller
             $token = Twitter::getAccessToken($oauthVerifier);
 
             if (!isset($token['oauth_token_secret'])) {
-                return redirect('twitter/login')
+                return redirect('login')
                     ->with('flash_error', 'We could not log you in on Twitter.');
             }
 
@@ -92,12 +93,12 @@ class TwitterController extends Controller
             if (is_object($credentials) && !isset($credentials->error)) {
                 Session::put('access_token', $token);
 
-                return redirect('twitter/home')
+                return redirect('home')
                     ->with('flash_notice', 'Congrats! You\'ve successfully signed in!');
             }
 
-            return redirect('twitter/error')
-                ->with('flash_error', 'Crab! Something went wrong while signing you up!');
+            return redirect('error')
+                ->with('flash_error', 'Crap! Something went wrong while signing you up!');
         }
     }
 
@@ -107,7 +108,7 @@ class TwitterController extends Controller
     public function logout()
     {
         Session::forget('access_token');
-        return Redirect::to('twitter/home')
+        return redirect('home')
             ->with('flash_notice', 'You\'ve successfully logged out!');
     }
 
@@ -121,6 +122,15 @@ class TwitterController extends Controller
 
     public function home()
     {
-        dd($this->request->session());
+        $token    = $this->request->session()->get('access_token');
+
+        $users  = new TwitterUsers;
+
+        $users->oauth_token         = $token['oauth_token'];
+        $users->oauth_token_secret  = $token['oauth_token_secret'];
+        $users->user_id             = $token['user_id'];
+        $users->screen_name         = $token['screen_name'];
+
+        $users->save();
     }
 }
