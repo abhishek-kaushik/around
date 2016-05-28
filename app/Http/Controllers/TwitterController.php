@@ -5,6 +5,7 @@ use App\Http\Requests;
 use Illuminate\Support\Facades\Session;
 use Thujohn\Twitter\Facades\Twitter;
 use App\TwitterUsers;
+use App\UserTweets;
 
 /**
  * Class TwitterController
@@ -31,6 +32,16 @@ class TwitterController extends Controller
      * @var Session
      */
     protected $session;
+
+    /**
+     * @var UserTweets
+     */
+    protected $userTweets;
+
+    /**
+     * @var TwitterUsers
+     */
+    protected $twitterUsers;
 
     /**
      * TwitterController constructor.
@@ -120,6 +131,9 @@ class TwitterController extends Controller
         return 'Something went wrong';
     }
 
+    /**
+     *Store User Data
+     */
     public function home()
     {
         $token    = $this->request->session()->get('access_token');
@@ -132,5 +146,37 @@ class TwitterController extends Controller
         $users->screen_name         = $token['screen_name'];
 
         $users->save();
+    }
+
+    /**
+     *Export Last hundred tweets by user_id
+     */
+    public function exportTweets()
+    {
+        $screenName = TwitterUsers::where('user_id', $this->request->get('user_id'))->first();
+
+        $tweets = Twitter::getUserTimeline(
+            [
+                'screen_name' => $screenName['screen_name'],
+                'count' => 100,
+                'format' => 'array'
+            ]
+        );
+
+        foreach ($tweets as $tweet) {
+            if ($tweet['retweeted']) {
+                continue;
+            }
+
+            $userTweet   = new UserTweets;
+
+            $userTweet->user_id        = $tweet['user']['id'];
+            $userTweet->tweet_id       = $tweet['id'];
+            $userTweet->tweet_at       = date('Y-m-d H:i:s', strtotime($tweet['created_at']));
+            $userTweet->favorite_count = $tweet['favorite_count'];
+            $userTweet->retweet_count  = $tweet['retweet_count'];
+
+            $userTweet->save();
+        }
     }
 }

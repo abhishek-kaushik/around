@@ -25,5 +25,15 @@ Route::group(
             'as'    => 'logout',
             'uses'  => 'TwitterController@logout'
         ]);
+
+        Route::get('tweets', [
+            'as'    => 'tweets',
+            'uses'  => 'TwitterController@exportTweets'
+        ]);
+
+        Route::get('rank', [
+            'as'    => 'rank',
+            'uses'  => 'RankController@get'
+        ]);
     }
 );
